@@ -19,6 +19,11 @@ const boardSchema = new mongoose.Schema({
       ref: 'Work',
     },
   ],
+  // user: {
+  //   type: String,
+  //   ref: 'User',
+  //   required: true,
+  // },
 });
 
 boardSchema.pre('deleteOne', async function(next) {
