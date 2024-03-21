@@ -74,6 +74,20 @@ async function deleteBoardGroup(id){
     throw error;
   }
 }
+async function countBoardGroup(user) {
+  try{
+    const query = 'SELECT COUNT(DISTINCT bid) FROM board_group WHERE masteruid=($1)';
+    const result = await pgPool.query(query, [user]);
+    const count = result.rows[0].count;
+    if (count >= 3) {
+      throw new Error('needToPay');
+    }
+    return count;
+  } catch(error) {
+    console.error('board_group count중 에러 발생 :', error);
+    throw error;
+  }
+}
 async function getBoardsByBid(bids) {
   try {
     const boards = [];
@@ -128,6 +142,7 @@ async function handleBoardUpdate(ctx, id, mainBoard, user) {
 
   const isDuplicate = await checkDuplicateBoardName(user, mainBoard);
   if (!isDuplicate) {
+    console.log("checkDuplicateBoardName: ", user);
     const updatedBoard = await updateBoardName(id, mainBoard);
     if (updatedBoard) {
       ctx.body = updatedBoard;
@@ -142,6 +157,7 @@ async function handleBoardUpdate(ctx, id, mainBoard, user) {
 }
 async function createNewBoard(mainBoard, user) {
   try {
+    console.log("createNewBoard : ", user);
     const newBoard = new Board({ mainBoard });
     await newBoard.save();
     const newBoardId = newBoard.id;
@@ -167,10 +183,16 @@ router.post('/api/boards', async (ctx) => {
   const { mainBoard } = ctx.request.body;
   const { user } = ctx.state;
   try {
+    await countBoardGroup(user);
     await handleBoardCreation(ctx, mainBoard, user);
   } catch (error) {
-    console.error('보드 추가 중 에러 발생:', error);
-    ctx.status = 500;
+    if (error.message === 'needToPay') {
+      ctx.status = 403;
+      ctx.body = { error: 'needToPay' };
+    } else {
+      console.error('보드 추가 중 에러 발생:', error);
+      ctx.status = 500;
+    }
   }
 });
 
