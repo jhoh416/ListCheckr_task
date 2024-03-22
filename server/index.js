@@ -8,14 +8,28 @@ const titleRouter = require('../routes/Title');
 const workRouter = require('../routes/Work');
 const jwtMiddleware = require('../middleware/JsonWebToken');
 const pgPool = require('../middleware/postgreConnect');
+const http = require('http');
+const webSocket = require('koa-websocket');
 
-const app = new koa();
+const app = webSocket(new koa());
 const PORT = 3001;
 
 app.use(cors());
 app.use(bodyParser());
 app.use(jwtMiddleware());
 
+const io = require('socket.io')(app.server);
+io.on('connection', (socket) => {
+    console.log('Socket.IO connected: ', socket.id);
+
+    socket.on('message', (data) => {
+        console.log('socket data: ', data);
+        socket.broadcast.emit('message', data);
+    })
+    socket.on('disconnect', () => {
+        console.log('Socket.IO disconnected:', socket.id);
+    })
+})
 mongoose.connect('mongodb://localhost:27015/todo', { useNewUrlParser: true, useUnifiedTopology: true })
     .then(() => console.log('MongoDB Connected...'))
     .catch(err => console.log(err));
